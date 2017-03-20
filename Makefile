@@ -79,13 +79,6 @@ REGISTRYSERVER=
 REGISTRYPROJECTNAME=vmware
 DEVFLAG=true
 NOTARYFLAG=false
-REGISTRYVERSION=2.6.0
-NGINXVERSION=1.11.5
-PHOTONVERSION=1.0
-NOTARYVERSION=server-0.5.0-fix
-NOTARYSIGNERVERSION=signer-0.5.0
-MARIADBVERSION=10.1.10
-HTTPPROXY=
 
 #clarity parameters
 CLARITYIMAGE=danieljt/harbor-clarity-base[:tag]
@@ -213,11 +206,7 @@ compile_jobservice:
 	
 compile_clarity:
 	@echo "compiling binary for clarity ui..."
-	@if [ "$(HTTPPROXY)" != "" ] ; then \
-		$(DOCKERCMD) run --rm -v $(UIPATH)/static:$(CLARITYSEEDPATH)/dist -v $(UINGPATH)/src:$(CLARITYSEEDPATH)/src $(CLARITYIMAGE) $(SHELL) $(CLARITYBUILDSCRIPT) -p $(HTTPPROXY); \
-	else \
-		$(DOCKERCMD) run --rm -v $(UIPATH)/static:$(CLARITYSEEDPATH)/dist -v $(UINGPATH)/src:$(CLARITYSEEDPATH)/src $(CLARITYIMAGE) $(SHELL) $(CLARITYBUILDSCRIPT); \
-	fi
+	@$(DOCKERCMD) run --rm -v $(UIPATH)/static/new-ui:$(CLARITYSEEDPATH)/dist -v $(UINGPATH)/src:$(CLARITYSEEDPATH)/src -v $(UINGPATH)/src/app:$(CLARITYSEEDPATH)/src/app $(CLARITYIMAGE) $(SHELL) $(CLARITYBUILDSCRIPT)
 	@echo "Done."
 	
 compile_normal: compile_clarity compile_adminserver compile_ui compile_jobservice
@@ -301,13 +290,13 @@ package_offline: compile build modify_composefile
 	@cp NOTICE $(HARBORPKG)/NOTICE
 			
 	@echo "pulling nginx and registry..."
-	@$(DOCKERPULL) registry:$(REGISTRYVERSION)
-	@$(DOCKERPULL) nginx:$(NGINXVERSION)
+	@$(DOCKERPULL) registry:2.5.1
+	@$(DOCKERPULL) nginx:1.11.5
 	@if [ "$(NOTARYFLAG)" = "true" ] ; then \
 		echo "pulling notary and mariadb..."; \
-		$(DOCKERPULL) jiangd/notary:$(NOTARYVERSION); \
-		$(DOCKERPULL) notary:$(NOTARYSIGNERVERSION); \
-		$(DOCKERPULL) mariadb:$(MARIADBVERSION); \
+		$(DOCKERPULL) jiangd/notary:server-0.5.0-fix; \
+		$(DOCKERPULL) notary:signer-0.5.0; \
+		$(DOCKERPULL) mariadb:10.1.10; \
 	fi	
 	
 	@echo "saving harbor docker image"
@@ -318,8 +307,8 @@ package_offline: compile build modify_composefile
 		$(DOCKERIMAGENAME_LOG):$(VERSIONTAG) \
 		$(DOCKERIMAGENAME_DB):$(VERSIONTAG) \
 		$(DOCKERIMAGENAME_JOBSERVICE):$(VERSIONTAG) \
-		nginx:$(NGINXVERSION) registry:$(REGISTRYVERSION) photon:$(PHOTONVERSION) \
-		jiangd/notary:$(NOTARYVERSION) notary:$(NOTARYSIGNERVERSION) mariadb:$(MARIADBVERSION); \
+		nginx:1.11.5 registry:2.5.1 photon:1.0 \
+		jiangd/notary:server-0.5.0-fix notary:signer-0.5.0 mariadb:10.1.10; \
 	else \
 		$(DOCKERSAVE) -o $(HARBORPKG)/$(DOCKERIMGFILE).$(VERSIONTAG).tgz \
 		$(DOCKERIMAGENAME_ADMINSERVER):$(VERSIONTAG) \
@@ -327,7 +316,7 @@ package_offline: compile build modify_composefile
 		$(DOCKERIMAGENAME_LOG):$(VERSIONTAG) \
 		$(DOCKERIMAGENAME_DB):$(VERSIONTAG) \
 		$(DOCKERIMAGENAME_JOBSERVICE):$(VERSIONTAG) \
-		nginx:$(NGINXVERSION) registry:$(REGISTRYVERSION) photon:$(PHOTONVERSION) ; \
+		nginx:1.11.5 registry:2.5.1 photon:1.0 ; \
 	fi
 	
 	@if [ "$(NOTARYFLAG)" = "true" ] ; then \
@@ -335,14 +324,14 @@ package_offline: compile build modify_composefile
 		          $(HARBORPKG)/common/templates $(HARBORPKG)/$(DOCKERIMGFILE).$(VERSIONTAG).tgz \
 				  $(HARBORPKG)/prepare $(HARBORPKG)/NOTICE \
 				  $(HARBORPKG)/LICENSE $(HARBORPKG)/install.sh \
-				  $(HARBORPKG)/harbor.cfg $(HARBORPKG)/$(DOCKERCOMPOSEFILENAME) \
-				  $(HARBORPKG)/$(DOCKERCOMPOSENOTARYFILENAME) ; \
+				  $(HARBORPKG)/harbor.cfg $(HARBORPKG)/$(DOCKERCOMPOSEFILENAME) ; \
 	else \
 		$(TARCMD) -zcvf harbor-offline-installer-$(VERSIONTAG).tgz \
 		          $(HARBORPKG)/common/templates $(HARBORPKG)/$(DOCKERIMGFILE).$(VERSIONTAG).tgz \
 				  $(HARBORPKG)/prepare $(HARBORPKG)/NOTICE \
 				  $(HARBORPKG)/LICENSE $(HARBORPKG)/install.sh \
-				  $(HARBORPKG)/harbor.cfg $(HARBORPKG)/$(DOCKERCOMPOSEFILENAME) ; \
+				  $(HARBORPKG)/harbor.cfg $(HARBORPKG)/$(DOCKERCOMPOSEFILENAME) \
+				  $(HARBORPKG)/$(DOCKERCOMPOSENOTARYFILENAME) ; \
 	fi
 
 	@rm -rf $(HARBORPKG)
