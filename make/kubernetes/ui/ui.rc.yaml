@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: ui-app
-        image: harbor/ui
+        image: vmware/harbor-ui
         imagePullPolicy: IfNotPresent
         env:
           - name: MYSQL_HOST
